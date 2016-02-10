@@ -38,11 +38,13 @@ class AbstractJoinPlan : public AbstractPlan {
 
   AbstractJoinPlan(PelotonJoinType joinType,
                    const expression::AbstractExpression *predicate,
-                   const ProjectInfo *proj_info)
+                   const ProjectInfo *proj_info,
+                   const catalog::Schema *proj_schema)
       : AbstractPlan(),
         join_type_(joinType),
         predicate_(predicate),
-        proj_info_(proj_info) {
+        proj_info_(proj_info),
+        proj_schema_(proj_schema) {
     // Fuck off!
   }
 
@@ -56,6 +58,10 @@ class AbstractJoinPlan : public AbstractPlan {
     return predicate_.get();
   }
 
+  const catalog::Schema *GetSchema() const {
+    return proj_schema_.get();
+  }
+
   const ProjectInfo *GetProjInfo() const { return proj_info_.get(); }
 
  private:
@@ -67,6 +73,10 @@ class AbstractJoinPlan : public AbstractPlan {
 
   /** @brief Projection info */
   std::unique_ptr<const ProjectInfo> proj_info_;
+
+  /** @brief Projection schema */
+  std::unique_ptr<const catalog::Schema> proj_schema_;
+
 };
 
 }  // namespace planner

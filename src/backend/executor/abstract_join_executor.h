@@ -56,6 +56,13 @@ class AbstractJoinExecutor : public AbstractExecutor {
    *
    * The number of tile should be identical to the number of row sets,
    * as a row can be uniquely identified by tile id and row oid.
+   *
+   * For example, if we get 3 result tiles from a child, the row sets
+   * [ <oid_t1, oid_t2, oid_t4>, <oid_t6, oid_t9>, </> ]
+   * represents that rows oid_t1, oid_t2 and oid_4 from the first tile
+   * don't have matched row; row oid_t6 and oid_t9 of the second tile
+   * don't have matched row; every row in the last tile has matched row.
+   *
    */
   typedef std::vector<std::unordered_set<oid_t>> RowSets;
 
@@ -141,6 +148,9 @@ class AbstractJoinExecutor : public AbstractExecutor {
 
   /** @brief Join Type */
   PelotonJoinType join_type_ = JOIN_TYPE_INVALID;
+
+  /** @brief Schema of the output tile before projection */
+  const catalog::Schema * proj_schema_ = nullptr;
 
   /** @brief Left and right row sets corresponding to tuples with no matching
    * counterpart */

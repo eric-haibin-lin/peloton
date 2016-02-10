@@ -59,8 +59,7 @@ std::vector<planner::MergeJoinPlan::JoinClause> CreateJoinClauses() {
 std::vector<PlanNodeType> join_algorithms = {
     PLAN_NODE_TYPE_NESTLOOP,
     PLAN_NODE_TYPE_MERGEJOIN,
-// TODO: Uncomment this
-//    PLAN_NODE_TYPE_HASHJOIN
+    //PLAN_NODE_TYPE_HASHJOIN
 };
 
 std::vector<PelotonJoinType> join_types = {
@@ -75,15 +74,17 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
 oid_t CountTuplesWithNullFields(executor::LogicalTile *logical_tile);
 
 enum JOIN_TEST_TYPE {
-  BASIC_TEST = 0
+  BASIC_TEST = 0,
+  EMPTY_LEFT_TABLE_TEST = 1,
+  EMPTY_RIGHT_TABLE_TEST = 2
 };
 
 TEST(JoinTests, JoinPredicateTest) {
 
-  oid_t join_test_types = 1;
+  oid_t join_test_types = 2;
 
   // Go over all join test types
-  for(oid_t join_test_type = 0 ;
+  for(oid_t join_test_type = 1 ;
       join_test_type < join_test_types ;
       join_test_type++) {
 
@@ -106,6 +107,82 @@ TEST(JoinTests, JoinPredicateTest) {
 
 }
 
+/**
+ * @ brief Expect no result tiles from child
+ */
+void ExpectZeroResultTiles(MockExecutor *table_scan_executor) {
+  EXPECT_CALL(*table_scan_executor, DExecute()).WillOnce(Return(false));
+}
+
+/**
+ * @ brief Expect exactly two result tiles from child, getting all of them
+ */
+void ExpectTwoResultTiles(
+    const std::unique_ptr<storage::DataTable>& table,
+    MockExecutor *table_scan_executor) {
+  std::unique_ptr<executor::LogicalTile> table_logical_tile1(
+      executor::LogicalTileFactory::WrapTileGroup(
+          table->GetTileGroup(0)));
+  std::unique_ptr<executor::LogicalTile> table_logical_tile2(
+      executor::LogicalTileFactory::WrapTileGroup(
+          table->GetTileGroup(1)));
+  EXPECT_CALL(*table_scan_executor, DExecute()).WillOnce(Return(true)).WillOnce(
+      Return(true)).WillOnce(Return(false));
+  EXPECT_CALL(*table_scan_executor, GetOutput()).WillOnce(
+      Return(table_logical_tile1.release())).WillOnce(
+      Return(table_logical_tile2.release()));
+}
+
+/**
+ * @ brief Expect more than one result tiles from right child, but only get one of them
+ */
+void ExpectMoreThanOneRightResultTiles(
+      const std::unique_ptr<storage::DataTable>& right_table,
+    MockExecutor *right_table_scan_executor) {
+  std::unique_ptr<executor::LogicalTile> right_table_logical_tile1(
+      executor::LogicalTileFactory::WrapTileGroup(
+          right_table->GetTileGroup(0)));
+
+  EXPECT_CALL(*right_table_scan_executor, DExecute()).WillOnce(Return(true));
+  EXPECT_CALL(*right_table_scan_executor, GetOutput()).WillOnce(
+      Return(right_table_logical_tile1.release()));
+}
+
+/**
+ * @ brief Expect exactly three result tiles from child, getting all of them
+ */
+void ExpectThreeResultTiles(
+    const std::unique_ptr<storage::DataTable>& table,
+    MockExecutor *table_scan_executor) {
+  std::unique_ptr<executor::LogicalTile> table_logical_tile1(
+      executor::LogicalTileFactory::WrapTileGroup(table->GetTileGroup(0)));
+  std::unique_ptr<executor::LogicalTile> table_logical_tile2(
+      executor::LogicalTileFactory::WrapTileGroup(table->GetTileGroup(1)));
+  std::unique_ptr<executor::LogicalTile> table_logical_tile3(
+      executor::LogicalTileFactory::WrapTileGroup(table->GetTileGroup(2)));
+  EXPECT_CALL(*table_scan_executor, DExecute()).WillOnce(Return(true)).WillOnce(
+      Return(true)).WillOnce(Return(true)).WillOnce(Return(false));
+  EXPECT_CALL(*table_scan_executor, GetOutput()).WillOnce(
+      Return(table_logical_tile1.release())).WillOnce(
+      Return(table_logical_tile2.release())).WillOnce(
+      Return(table_logical_tile3.release()));
+}
+
+/*
+ * Tuples of the left table:
+ * Int    Int    Double    Varchar
+ * 10     11     ....      ....
+ * 20     21     ....      ....
+ * ...    ....   .....     ....
+ * 140    141    ....      ....
+ *
+ * Tuples of the right table
+ * Int    Int    Double    Varchar
+ * 10     11     ....      ....
+ * 20     21     ....      ....
+ * ...    ....   .....     ....
+ * 90     91     ....      ....
+ */
 void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid_t join_test_type) {
   //===--------------------------------------------------------------------===//
   // Mock table scan executors
@@ -115,17 +192,32 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
 
   // Create a table and wrap it in logical tile
   size_t tile_group_size = TESTS_TUPLES_PER_TILEGROUP;
-  size_t left_table_tile_group_count = 3;
-  size_t right_table_tile_group_count = 2;
+  size_t left_table_tile_group_count;
+  size_t right_table_tile_group_count;
+  switch (join_test_type) {
+    case BASIC_TEST: {
+      // Left table has 3 tile groups
+      left_table_tile_group_count = 3;
+      // Right table has 2 tile groups
+      right_table_tile_group_count = 2;
+    } break;
+    case EMPTY_LEFT_TABLE_TEST: {
+      left_table_tile_group_count = 0;
+      right_table_tile_group_count = 2;
+    } break;
+    case EMPTY_RIGHT_TABLE_TEST: {
+      left_table_tile_group_count = 3;
+      right_table_tile_group_count = 0;
+    } break;
+    default: break;
+  }
 
-  // Left table has 3 tile groups
   std::unique_ptr<storage::DataTable> left_table(
       ExecutorTestsUtil::CreateTable(tile_group_size));
   ExecutorTestsUtil::PopulateTable(
       left_table.get(), tile_group_size * left_table_tile_group_count, false,
       false, false);
 
-  // Right table has 2 tile groups
   std::unique_ptr<storage::DataTable> right_table(
       ExecutorTestsUtil::CreateTable(tile_group_size));
   ExecutorTestsUtil::PopulateTable(
@@ -136,20 +228,6 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
 
   //std::cout << (*right_table);
 
-  // Wrap the input tables with logical tiles
-  std::unique_ptr<executor::LogicalTile> left_table_logical_tile1(
-      executor::LogicalTileFactory::WrapTileGroup(left_table->GetTileGroup(0)));
-  std::unique_ptr<executor::LogicalTile> left_table_logical_tile2(
-      executor::LogicalTileFactory::WrapTileGroup(left_table->GetTileGroup(1)));
-  std::unique_ptr<executor::LogicalTile> left_table_logical_tile3(
-      executor::LogicalTileFactory::WrapTileGroup(left_table->GetTileGroup(2)));
-
-  std::unique_ptr<executor::LogicalTile> right_table_logical_tile1(
-      executor::LogicalTileFactory::WrapTileGroup(
-          right_table->GetTileGroup(0)));
-  std::unique_ptr<executor::LogicalTile> right_table_logical_tile2(
-      executor::LogicalTileFactory::WrapTileGroup(
-          right_table->GetTileGroup(1)));
 
   // Left scan executor returns logical tiles from the left table
 
@@ -159,19 +237,13 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
   // Setup left table
   //===--------------------------------------------------------------------===//
 
-  if(join_test_type == BASIC_TEST) {
-
-    EXPECT_CALL(left_table_scan_executor, DExecute())
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(false));
-
-    EXPECT_CALL(left_table_scan_executor, GetOutput())
-        .WillOnce(Return(left_table_logical_tile1.release()))
-        .WillOnce(Return(left_table_logical_tile2.release()))
-        .WillOnce(Return(left_table_logical_tile3.release()));
-
+  switch (join_test_type) {
+  case BASIC_TEST:   {
+    ExpectThreeResultTiles(left_table, &left_table_scan_executor);
+  }break;
+  case EMPTY_LEFT_TABLE_TEST: {
+    ExpectZeroResultTiles(&left_table_scan_executor);
+  } break;
   }
 
   // Right scan executor returns logical tiles from the right table
@@ -182,17 +254,18 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
   // Setup right table
   //===--------------------------------------------------------------------===//
 
-  if(join_test_type == BASIC_TEST) {
-
-    EXPECT_CALL(right_table_scan_executor, DExecute())
-         .WillOnce(Return(true))
-         .WillOnce(Return(true))
-         .WillOnce(Return(false));
-
-     EXPECT_CALL(right_table_scan_executor, GetOutput())
-         .WillOnce(Return(right_table_logical_tile1.release()))
-         .WillOnce(Return(right_table_logical_tile2.release()));
-
+  switch (join_test_type) {
+    case BASIC_TEST: {
+          ExpectTwoResultTiles(right_table, &right_table_scan_executor);
+    } break;
+    case EMPTY_LEFT_TABLE_TEST: {
+      if (join_type == JOIN_TYPE_INNER || join_type == JOIN_TYPE_LEFT) {
+        ExpectMoreThanOneRightResultTiles(right_table, &right_table_scan_executor);
+      } else if (join_type == JOIN_TYPE_OUTER || join_type == JOIN_TYPE_RIGHT) {
+        ExpectTwoResultTiles(right_table, &right_table_scan_executor);
+      }
+    }
+      break;
   }
 
   //===--------------------------------------------------------------------===//
@@ -355,6 +428,62 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
         break;
     }
 
+  } else if (join_test_type == EMPTY_LEFT_TABLE_TEST) {
+    // Check output
+    switch (join_type) {
+      case JOIN_TYPE_INNER:
+        EXPECT_EQ(result_tuple_count, 0);
+        EXPECT_EQ(tuples_with_null, 0);
+        break;
+
+      case JOIN_TYPE_LEFT:
+        EXPECT_EQ(result_tuple_count, 0);
+        EXPECT_EQ(tuples_with_null, 0);
+        break;
+
+      case JOIN_TYPE_RIGHT:
+        EXPECT_EQ(result_tuple_count, 10);
+        EXPECT_EQ(tuples_with_null, 10);
+        break;
+
+      case JOIN_TYPE_OUTER:
+        EXPECT_EQ(result_tuple_count, 15);
+        EXPECT_EQ(tuples_with_null, 15);
+        break;
+
+      default:
+        throw Exception("Unsupported join type : " + std::to_string(join_type));
+        break;
+    }
+
+  } else if (join_test_type == EMPTY_RIGHT_TABLE_TEST) {
+
+    // Check output
+    switch (join_type) {
+      case JOIN_TYPE_INNER:
+        EXPECT_EQ(result_tuple_count, 0);
+        EXPECT_EQ(tuples_with_null, 0);
+        break;
+
+      case JOIN_TYPE_LEFT:
+        EXPECT_EQ(result_tuple_count, 15);
+        EXPECT_EQ(tuples_with_null, 15);
+        break;
+
+      case JOIN_TYPE_RIGHT:
+        EXPECT_EQ(result_tuple_count, 0);
+        EXPECT_EQ(tuples_with_null, 0);
+        break;
+
+      case JOIN_TYPE_OUTER:
+        EXPECT_EQ(result_tuple_count, 15);
+        EXPECT_EQ(tuples_with_null, 15);
+        break;
+
+      default:
+        throw Exception("Unsupported join type : " + std::to_string(join_type));
+        break;
+    }
   }
 
 }

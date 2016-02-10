@@ -76,7 +76,7 @@ class AbstractExecutor {
 
   void SetOutput(LogicalTile *val);
 
-  /**
+   /**
    * @brief Convenience method to return plan node corresponding to this
    *        executor, appropriately type-casted.
    *

@@ -108,7 +108,7 @@ bool MergeJoinExecutor::DExecute() {
   }
 
   // Check if we have logical tiles to process
-  if(left_result_tiles_.empty() || right_result_tiles_.empty()) {
+  if (left_result_tiles_.empty() || right_result_tiles_.empty()) {
     return false;
   }
 
@@ -241,8 +241,7 @@ size_t MergeJoinExecutor::Advance(LogicalTile *tile, size_t start_row,
   while (end_row < tuple_count) {
     expression::ContainerTuple<executor::LogicalTile> this_tuple(tile,
                                                                  this_row);
-    expression::ContainerTuple<executor::LogicalTile> next_tuple(tile,
-                                                                 end_row);
+    expression::ContainerTuple<executor::LogicalTile> next_tuple(tile, end_row);
 
     bool diff = false;
 

@@ -21,6 +21,8 @@
 #include "backend/planner/abstract_join_plan.h"
 #include "backend/expression/abstract_expression.h"
 #include "backend/expression/container_tuple.h"
+#include "backend/storage/tile_group_header.h"
+#include "backend/storage/tile.h"
 
 namespace peloton {
 namespace executor {
@@ -49,6 +51,7 @@ bool AbstractJoinExecutor::DInit() {
   predicate_ = node.GetPredicate();
   proj_info_ = node.GetProjInfo();
   join_type_ = node.GetJoinType();
+  proj_schema_ = node.GetSchema();
 
   return true;
 }
@@ -96,6 +99,7 @@ std::unique_ptr<LogicalTile> AbstractJoinExecutor::BuildOutputLogicalTile(
   auto left_tile_schema = left_tile->GetSchema();
   auto right_tile_schema = right_tile->GetSchema();
 
+  // advance the position list index of right tile schema
   for (auto &col : right_tile_schema) {
     col.position_list_idx += left_tile->GetPositionLists().size();
   }
@@ -205,6 +209,9 @@ void AbstractJoinExecutor::UpdateRightJoinRowSets() {
                                            right_result_tiles_.back()->end());
 }
 
+/**
+ * Update the row set with all rows from the last tile from both children
+ */
 void AbstractJoinExecutor::UpdateFullJoinRowSets() {
   UpdateLeftJoinRowSets();
   UpdateRightJoinRowSets();

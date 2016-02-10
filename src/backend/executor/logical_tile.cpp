@@ -414,6 +414,7 @@ std::ostream &operator<<(std::ostream &os, const LogicalTile &lt) {
 
       oid_t base_tuple_id = lt.position_lists_[cp.position_list_idx][tuple_itr];
 
+      // get the value from the base physical tile
       if (base_tuple_id == NULL_OID) {
         os << ValueFactory::GetNullValueByType(
             cp.base_tile->GetSchema()->GetType(cp.origin_column_id)) << " ";

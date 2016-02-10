@@ -33,8 +33,9 @@ class NestedLoopJoinPlan : public AbstractJoinPlan {
 
   NestedLoopJoinPlan(PelotonJoinType join_type,
                      const expression::AbstractExpression *predicate,
-                     const ProjectInfo *proj_info)
-      : AbstractJoinPlan(join_type, predicate, proj_info) {
+                     const ProjectInfo *proj_info,
+                     const catalog::Schema *proj_schema)
+      : AbstractJoinPlan(join_type, predicate, proj_info, proj_schema) {
     // Nothing to see here...
   }
 
