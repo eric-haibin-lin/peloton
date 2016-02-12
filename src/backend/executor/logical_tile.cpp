@@ -156,7 +156,7 @@ storage::Tile *LogicalTile::GetBaseTile(oid_t column_id) {
 Value LogicalTile::GetValue(oid_t tuple_id, oid_t column_id) {
   assert(column_id < schema_.size());
   assert(tuple_id < total_tuples_);
-  // assert(visible_rows_[tuple_id]);
+  assert(visible_rows_[tuple_id]);
 
   ColumnInfo &cp = schema_[column_id];
   oid_t base_tuple_id = position_lists_[cp.position_list_idx][tuple_id];

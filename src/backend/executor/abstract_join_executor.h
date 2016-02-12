@@ -78,8 +78,8 @@ class AbstractJoinExecutor : public AbstractExecutor {
   std::unique_ptr<LogicalTile> BuildOutputLogicalTile(LogicalTile *left_tile,
                                                       LogicalTile *right_tile);
 
-  //  std::unique_ptr<LogicalTile> BuildOutputLogicalTile(
-  //    const catalog::Schema *schema);
+  // Build the joined tile with one of the child tile and the schema
+  // of the result tile
   std::unique_ptr<LogicalTile> BuildOutputLogicalTile(
       LogicalTile *left_tile, LogicalTile *right_tile,
       const catalog::Schema *output_schema);
@@ -89,10 +89,12 @@ class AbstractJoinExecutor : public AbstractExecutor {
       std::vector<LogicalTile::ColumnInfo> &left,
       std::vector<LogicalTile::ColumnInfo> &right);
 
+  // build the column information from the right tile and the output schema
   std::vector<LogicalTile::ColumnInfo> BuildSchemaFromRightTile(
       const std::vector<LogicalTile::ColumnInfo> *right_schema,
       const catalog::Schema *output_schema);
 
+  // build the column information from the left tile and the output schema
   std::vector<LogicalTile::ColumnInfo> BuildSchemaFromLeftTile(
       const std::vector<LogicalTile::ColumnInfo> *left_schema,
       const catalog::Schema *output_schema, oid_t left_pos_list_count);

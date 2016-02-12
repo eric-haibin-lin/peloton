@@ -92,13 +92,14 @@ AbstractJoinExecutor::BuildSchemaFromLeftTile(
     const std::vector<LogicalTile::ColumnInfo> *left_schema,
     const catalog::Schema *output_schema, oid_t left_pos_list_count) {
   assert(left_schema != nullptr);
-  auto total_size = output_schema->GetColumnCount();
+
   // dummy physical tile for the empty child
   std::shared_ptr<storage::Tile> ptile(storage::TileFactory::GetTile(
       BACKEND_TYPE_MM, INVALID_OID, INVALID_OID, INVALID_OID, INVALID_OID,
       nullptr, *output_schema, nullptr, 1));
 
   std::vector<LogicalTile::ColumnInfo> schema;
+  auto total_size = output_schema->GetColumnCount();
   if (proj_info_ == nullptr) {
     // no projection. each column's of the right tile maps to the last position
     // list
@@ -150,6 +151,7 @@ AbstractJoinExecutor::BuildSchemaFromRightTile(
       nullptr, *output_schema, nullptr, 1));
 
   std::vector<LogicalTile::ColumnInfo> schema;
+  auto total_size = output_schema->GetColumnCount();
   if (proj_info_ == nullptr) {
     // no projection. each column's of the right tile maps to the first position
     // list
@@ -374,6 +376,10 @@ bool AbstractJoinExecutor::BuildOuterJoinOutput() {
   return false;
 }
 
+/*
+ * build left join output by adding null rows for every row from right tile
+ * which doesn't have a match
+ */
 bool AbstractJoinExecutor::BuildLeftJoinOutput() {
   while (left_matching_idx < no_matching_left_row_sets_.size()) {
     if (no_matching_left_row_sets_[left_matching_idx].empty()) {
@@ -412,6 +418,10 @@ bool AbstractJoinExecutor::BuildLeftJoinOutput() {
   return false;
 }
 
+/*
+ * build right join output by adding null rows for every row from left tile
+ * which doesn't have a match
+ */
 bool AbstractJoinExecutor::BuildRightJoinOutput() {
   while (right_matching_idx < no_matching_right_row_sets_.size()) {
     if (no_matching_right_row_sets_[right_matching_idx].empty()) {
