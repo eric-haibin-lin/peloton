@@ -136,15 +136,15 @@ void ExpectTwoResultTiles(
 /**
  * @ brief Expect more than one result tiles from right child, but only get one of them
  */
-void ExpectMoreThanOneRightResultTiles(
-      const std::unique_ptr<storage::DataTable>& right_table,
-    MockExecutor *right_table_scan_executor) {
+void ExpectMoreThanOneResultTiles(
+      const std::unique_ptr<storage::DataTable>& table,
+    MockExecutor *table_scan_executor) {
   std::unique_ptr<executor::LogicalTile> right_table_logical_tile1(
       executor::LogicalTileFactory::WrapTileGroup(
-          right_table->GetTileGroup(0)));
+          table->GetTileGroup(0)));
 
-  EXPECT_CALL(*right_table_scan_executor, DExecute()).WillOnce(Return(true));
-  EXPECT_CALL(*right_table_scan_executor, GetOutput()).WillOnce(
+  EXPECT_CALL(*table_scan_executor, DExecute()).WillOnce(Return(true));
+  EXPECT_CALL(*table_scan_executor, GetOutput()).WillOnce(
       Return(right_table_logical_tile1.release()));
 }
 
@@ -240,9 +240,16 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
   switch (join_test_type) {
   case BASIC_TEST:   {
     ExpectThreeResultTiles(left_table, &left_table_scan_executor);
-  }break;
+  } break;
   case EMPTY_LEFT_TABLE_TEST: {
     ExpectZeroResultTiles(&left_table_scan_executor);
+  } break;
+  case EMPTY_RIGHT_TABLE_TEST: {
+    if (join_type == JOIN_TYPE_INNER || join_type == JOIN_TYPE_RIGHT) {
+      // do nothing. left child never invoked
+    } else {
+      ExpectThreeResultTiles(left_table, &left_table_scan_executor);
+    }
   } break;
   }
 
@@ -260,12 +267,14 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
     } break;
     case EMPTY_LEFT_TABLE_TEST: {
       if (join_type == JOIN_TYPE_INNER || join_type == JOIN_TYPE_LEFT) {
-        ExpectMoreThanOneRightResultTiles(right_table, &right_table_scan_executor);
+        ExpectMoreThanOneResultTiles(right_table, &right_table_scan_executor);
       } else if (join_type == JOIN_TYPE_OUTER || join_type == JOIN_TYPE_RIGHT) {
         ExpectTwoResultTiles(right_table, &right_table_scan_executor);
       }
+    } break;
+    case EMPTY_RIGHT_TABLE_TEST: {
+      ExpectZeroResultTiles(&right_table_scan_executor);
     }
-      break;
   }
 
   //===--------------------------------------------------------------------===//
@@ -275,6 +284,12 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
   oid_t result_tuple_count = 0;
   oid_t tuples_with_null = 0;
   auto projection = JoinTestsUtil::CreateProjection();
+  // setup the projection schema
+  catalog::Schema* schema = new catalog::Schema({
+    ExecutorTestsUtil::GetColumnInfo(1),
+    ExecutorTestsUtil::GetColumnInfo(1),
+    ExecutorTestsUtil::GetColumnInfo(0),
+    ExecutorTestsUtil::GetColumnInfo(0)});;
 
   // Construct predicate
   expression::AbstractExpression *predicate =
@@ -285,7 +300,7 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
     case PLAN_NODE_TYPE_NESTLOOP: {
       // Create nested loop join plan node.
       planner::NestedLoopJoinPlan nested_loop_join_node(join_type, predicate,
-                                                        projection);
+                                                        projection, schema);
 
       // Run the nested loop join executor
       executor::NestedLoopJoinExecutor nested_loop_join_executor(
@@ -318,7 +333,7 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
 
       // Create merge join plan node
       planner::MergeJoinPlan merge_join_node(join_type, predicate, projection,
-                                             join_clauses);
+                                             join_clauses, schema);
 
       // Construct the merge join executor
       executor::MergeJoinExecutor merge_join_executor(&merge_join_node,
@@ -361,7 +376,7 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
 
       // Create hash join plan node.
       planner::HashJoinPlan hash_join_plan_node(join_type, predicate,
-                                                projection);
+                                                projection, schema);
 
       // Construct the hash join executor
       executor::HashJoinExecutor hash_join_executor(&hash_join_plan_node,
@@ -429,6 +444,7 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
     }
 
   } else if (join_test_type == EMPTY_LEFT_TABLE_TEST) {
+
     // Check output
     switch (join_type) {
       case JOIN_TYPE_INNER:

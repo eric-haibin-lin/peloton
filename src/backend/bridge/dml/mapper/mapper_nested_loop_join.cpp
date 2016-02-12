@@ -63,7 +63,7 @@ const planner::AbstractPlan *PlanTransformer::TransformNestLoop(
   planner::AbstractPlan *result = nullptr;
   planner::NestedLoopJoinPlan *plan_node = nullptr;
 
-  //project_schema is the schema for the result tile after join operation
+  //project_schema is the schema for the result tile
   auto project_schema = SchemaTransformer::GetSchemaFromTupleDesc(
       nl_plan_state->tts_tupleDescriptor);
 

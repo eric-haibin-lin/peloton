@@ -170,6 +170,9 @@ class LogicalTile {
    public:
     PositionListsBuilder();
 
+    PositionListsBuilder(const PositionLists *left_pos_list,
+                         const PositionLists *right_pos_list);
+
     PositionListsBuilder(LogicalTile *left_tile, LogicalTile *right_tile);
 
     inline void SetLeftSource(const PositionLists *left_source) {
@@ -201,9 +204,17 @@ class LogicalTile {
 
     inline void AddLeftNullRow(size_t right_itr) {
       assert(!invalid_);
+      // Determine the number of null position list on the left
+      oid_t left_pos_list_size;
+      if (left_source_ == nullptr) {
+        left_pos_list_size = 1;
+      } else {
+        left_pos_list_size = left_source_->size();
+      }
+
       // First, copy the elements in left logical tile's tuple
       for (size_t output_tile_column_itr = 0;
-           output_tile_column_itr < left_source_->size();
+           output_tile_column_itr < left_pos_list_size;
            output_tile_column_itr++) {
         output_lists_[output_tile_column_itr].push_back(NULL_OID);
       }
@@ -212,13 +223,22 @@ class LogicalTile {
       for (size_t output_tile_column_itr = 0;
            output_tile_column_itr < right_source_->size();
            output_tile_column_itr++) {
-        output_lists_[left_source_->size() + output_tile_column_itr].push_back(
+        output_lists_[left_pos_list_size + output_tile_column_itr].push_back(
             (*right_source_)[output_tile_column_itr][right_itr]);
       }
     }
 
     inline void AddRightNullRow(size_t left_itr) {
       assert(!invalid_);
+
+      // Determine the number of null position list on the right
+      oid_t right_pos_list_size;
+      if (right_source_ == nullptr) {
+        right_pos_list_size = 1;
+      } else {
+        right_pos_list_size = right_source_->size();
+      }
+
       // First, copy the elements in left logical tile's tuple
       for (size_t output_tile_column_itr = 0;
            output_tile_column_itr < left_source_->size();
@@ -229,7 +249,7 @@ class LogicalTile {
 
       // Then, copy the elements in right logical tile's tuple
       for (size_t output_tile_column_itr = 0;
-           output_tile_column_itr < right_source_->size();
+           output_tile_column_itr < right_pos_list_size;
            output_tile_column_itr++) {
         output_lists_[left_source_->size() + output_tile_column_itr].push_back(
             NULL_OID);
@@ -242,8 +262,7 @@ class LogicalTile {
     }
 
     inline size_t Size() const {
-      if(output_lists_.size() >= 1)
-        return output_lists_[0].size();
+      if (output_lists_.size() >= 1) return output_lists_[0].size();
       return 0;
     }
 

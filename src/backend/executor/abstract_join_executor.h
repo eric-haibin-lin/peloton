@@ -78,11 +78,27 @@ class AbstractJoinExecutor : public AbstractExecutor {
   std::unique_ptr<LogicalTile> BuildOutputLogicalTile(LogicalTile *left_tile,
                                                       LogicalTile *right_tile);
 
+  //  std::unique_ptr<LogicalTile> BuildOutputLogicalTile(
+  //    const catalog::Schema *schema);
+  std::unique_ptr<LogicalTile> BuildOutputLogicalTile(
+      LogicalTile *left_tile, LogicalTile *right_tile,
+      const catalog::Schema *output_schema);
+
   // Build the schema of the joined tile based on the projection info
   std::vector<LogicalTile::ColumnInfo> BuildSchema(
       std::vector<LogicalTile::ColumnInfo> &left,
       std::vector<LogicalTile::ColumnInfo> &right);
 
+  std::vector<LogicalTile::ColumnInfo> BuildSchemaFromRightTile(
+      const std::vector<LogicalTile::ColumnInfo> *right_schema,
+      const catalog::Schema *output_schema);
+
+  std::vector<LogicalTile::ColumnInfo> BuildSchemaFromLeftTile(
+      const std::vector<LogicalTile::ColumnInfo> *left_schema,
+      const catalog::Schema *output_schema, oid_t left_pos_list_count);
+
+  oid_t GetEmptyColumnCount(const catalog::Schema *output_schema,
+                            LogicalTile *left_tile, LogicalTile *right_tile);
   // Build position lists
   std::vector<std::vector<oid_t>> BuildPostitionLists(LogicalTile *left_tile,
                                                       LogicalTile *right_tile);
@@ -94,6 +110,19 @@ class AbstractJoinExecutor : public AbstractExecutor {
   void UpdateLeftJoinRowSets();
   void UpdateRightJoinRowSets();
   void UpdateFullJoinRowSets();
+
+  inline LogicalTile *GetNonEmptyTile(LogicalTile *left_tile,
+                                      LogicalTile *right_tile) {
+    LogicalTile *non_empty_tile = nullptr;
+    if (left_tile == nullptr) {
+      non_empty_tile = right_tile;
+    }
+    if (right_tile == nullptr) {
+      non_empty_tile = left_tile;
+    }
+    assert(non_empty_tile != nullptr);
+    return non_empty_tile;
+  }
 
   /**
    * Record a matched left row, which should not be constructed
@@ -150,7 +179,7 @@ class AbstractJoinExecutor : public AbstractExecutor {
   PelotonJoinType join_type_ = JOIN_TYPE_INVALID;
 
   /** @brief Schema of the output tile before projection */
-  const catalog::Schema * proj_schema_ = nullptr;
+  const catalog::Schema *proj_schema_ = nullptr;
 
   /** @brief Left and right row sets corresponding to tuples with no matching
    * counterpart */

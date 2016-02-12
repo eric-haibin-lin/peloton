@@ -40,6 +40,7 @@ expression::AbstractExpression *JoinTestsUtil::CreateJoinPredicate() {
   return predicate;
 }
 
+// Create the target list and direct map list as projection information
 planner::ProjectInfo *JoinTestsUtil::CreateProjection() {
   // Create the plan node
   planner::ProjectInfo::TargetList target_list;

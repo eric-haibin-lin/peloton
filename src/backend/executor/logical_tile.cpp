@@ -156,7 +156,7 @@ storage::Tile *LogicalTile::GetBaseTile(oid_t column_id) {
 Value LogicalTile::GetValue(oid_t tuple_id, oid_t column_id) {
   assert(column_id < schema_.size());
   assert(tuple_id < total_tuples_);
-  assert(visible_rows_[tuple_id]);
+  // assert(visible_rows_[tuple_id]);
 
   ColumnInfo &cp = schema_[column_id];
   oid_t base_tuple_id = position_lists_[cp.position_list_idx][tuple_id];
@@ -301,10 +301,35 @@ LogicalTile::PositionListsBuilder::PositionListsBuilder() {
   // Nothing to do here !
 }
 
+
+LogicalTile::PositionListsBuilder::PositionListsBuilder(
+    const LogicalTile::PositionLists *left_pos_list,
+    const LogicalTile::PositionLists *right_pos_list) {
+  const LogicalTile::PositionLists *non_empty_pos_list = nullptr;
+  if (left_pos_list == nullptr) {
+    non_empty_pos_list = right_pos_list;
+    SetRightSource(right_pos_list);
+  } else {
+    non_empty_pos_list = left_pos_list;
+    SetLeftSource(left_pos_list);
+  }
+  assert(non_empty_pos_list != nullptr);
+  output_lists_.push_back(std::vector<oid_t>());
+  // reserve one extra pos list for the empty tile
+  for (size_t column_itr = 0; column_itr < non_empty_pos_list->size() + 1;
+       column_itr++) {
+    output_lists_.push_back(std::vector<oid_t>());
+  }
+}
+
+/**
+ * Initialize the position list of result tiles based on the number of
+ * columns of the left and right tiles
+ */
 LogicalTile::PositionListsBuilder::PositionListsBuilder(LogicalTile *left_tile,
                                                         LogicalTile *right_tile)
-: left_source_(&left_tile->GetPositionLists()),
-  right_source_(&right_tile->GetPositionLists()) {
+    : left_source_(&left_tile->GetPositionLists()),
+      right_source_(&right_tile->GetPositionLists()) {
   // Compute the output logical tile column count
   size_t left_tile_column_count = left_source_->size();
   size_t right_tile_column_count = right_source_->size();
@@ -316,7 +341,7 @@ LogicalTile::PositionListsBuilder::PositionListsBuilder(LogicalTile *left_tile,
 
   // Construct position lists for output tile
   for (size_t column_itr = 0; column_itr < output_tile_column_count;
-      column_itr++) {
+       column_itr++) {
     output_lists_.push_back(std::vector<oid_t>());
   }
 }
@@ -402,8 +427,9 @@ std::ostream &operator<<(std::ostream &os, const LogicalTile &lt) {
   os << "\t-----------------------------------------------------------\n";
   os << "\t VALUES : \n";
 
+  // for each row in the logical tile
   for (oid_t tuple_itr = 0; tuple_itr < lt.total_tuples_; tuple_itr++) {
-
+    // skip invisible rows
     if(lt.visible_rows_[tuple_itr] == false)
       continue;
 
@@ -417,7 +443,8 @@ std::ostream &operator<<(std::ostream &os, const LogicalTile &lt) {
       // get the value from the base physical tile
       if (base_tuple_id == NULL_OID) {
         os << ValueFactory::GetNullValueByType(
-            cp.base_tile->GetSchema()->GetType(cp.origin_column_id)) << " ";
+                  cp.base_tile->GetSchema()->GetType(cp.origin_column_id))
+           << " ";
       } else {
         os << cp.base_tile->GetValue(base_tuple_id, cp.origin_column_id) << " ";
       }
