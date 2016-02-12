@@ -80,7 +80,6 @@ bool NestedLoopJoinExecutor::DExecute() {
       LOG_TRACE("Advance the right buffer iterator.");
 
       assert(!left_result_tiles_.empty());
-      assert(!right_result_tiles_.empty());
       right_result_itr_++;
 
       if (right_result_itr_ >= right_result_tiles_.size()) {
@@ -95,12 +94,6 @@ bool NestedLoopJoinExecutor::DExecute() {
       if (children_[1]->Execute() == false) {
         LOG_TRACE("Right child is exhausted.");
 
-        if (right_result_tiles_.empty()) {
-          assert(left_result_tiles_.empty());
-          LOG_TRACE("Right child returned nothing. Exit.");
-          return false;
-        }
-
         right_child_done_ = true;
         right_result_itr_ = 0;
         advance_left_child = true;
@@ -114,7 +107,6 @@ bool NestedLoopJoinExecutor::DExecute() {
     }
 
     if (advance_left_child == true || left_result_tiles_.empty()) {
-      assert(right_result_itr_ == 0);
 
       // Left child is finished, no more tiles
       if (left_child_done_ || children_[0]->Execute() == false) {
@@ -122,7 +114,6 @@ bool NestedLoopJoinExecutor::DExecute() {
 
         // Left child exhausted.
         // Release cur left tile. Clear right child's result buffer and return.
-        assert(right_result_tiles_.size() > 0);
         left_child_done_ = true;
 
         return BuildOuterJoinOutput();

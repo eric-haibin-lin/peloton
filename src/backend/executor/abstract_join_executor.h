@@ -99,8 +99,6 @@ class AbstractJoinExecutor : public AbstractExecutor {
       const std::vector<LogicalTile::ColumnInfo> *left_schema,
       const catalog::Schema *output_schema, oid_t left_pos_list_count);
 
-  oid_t GetEmptyColumnCount(const catalog::Schema *output_schema,
-                            LogicalTile *left_tile, LogicalTile *right_tile);
   // Build position lists
   std::vector<std::vector<oid_t>> BuildPostitionLists(LogicalTile *left_tile,
                                                       LogicalTile *right_tile);

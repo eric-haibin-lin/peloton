@@ -93,8 +93,15 @@ bool MergeJoinExecutor::DExecute() {
     if (children_[0]->Execute() == false) {
       LOG_TRACE("Did not get left tile \n");
       left_child_done_ = true;
-      // Try again
-      return DExecute();
+
+      // if we know the join type is left join, we don't have to get the
+      // tiles from right child anymore.
+      if (join_type_ == JOIN_TYPE_LEFT || join_type_ == JOIN_TYPE_INNER) {
+        return BuildOuterJoinOutput();
+      } else {
+        // otherwise, try again
+        return DExecute();
+      }
     }
 
     LOG_TRACE("Got left tile \n");
@@ -109,7 +116,7 @@ bool MergeJoinExecutor::DExecute() {
 
   // Check if we have logical tiles to process
   if (left_result_tiles_.empty() || right_result_tiles_.empty()) {
-    return false;
+    return BuildOuterJoinOutput();
   }
 
   LogicalTile *left_tile = left_result_tiles_.back().get();
@@ -162,7 +169,7 @@ bool MergeJoinExecutor::DExecute() {
       // Left key == Right key, go and check next join clause
     }
 
-    // Atleast one of the join clauses don't match
+    // At least one of the join clauses don't match
     // One of the tile has been advanced
     if (not_matching_tuple_pair) {
       continue;

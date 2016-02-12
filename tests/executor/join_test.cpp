@@ -57,19 +57,15 @@ std::vector<planner::MergeJoinPlan::JoinClause> CreateJoinClauses() {
 }
 
 std::vector<PlanNodeType> join_algorithms = {
-    PLAN_NODE_TYPE_NESTLOOP,
-    //PLAN_NODE_TYPE_MERGEJOIN,
-    //PLAN_NODE_TYPE_HASHJOIN
+    PLAN_NODE_TYPE_NESTLOOP, PLAN_NODE_TYPE_MERGEJOIN,
+    // PLAN_NODE_TYPE_HASHJOIN
 };
 
-std::vector<PelotonJoinType> join_types = {
-    JOIN_TYPE_INNER,
-    JOIN_TYPE_LEFT,
-    JOIN_TYPE_RIGHT,
-    JOIN_TYPE_OUTER
-};
+std::vector<PelotonJoinType> join_types = {JOIN_TYPE_INNER, JOIN_TYPE_LEFT,
+                                           JOIN_TYPE_RIGHT, JOIN_TYPE_OUTER};
 
-void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid_t join_test_type);
+void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type,
+                     oid_t join_test_type);
 
 oid_t CountTuplesWithNullFields(executor::LogicalTile *logical_tile);
 
@@ -80,19 +76,18 @@ enum JOIN_TEST_TYPE {
 };
 
 TEST(JoinTests, JoinPredicateTest) {
-
-  oid_t join_test_types = 2;
+  oid_t join_test_types = 3;
 
   // Go over all join test types
-  for(oid_t join_test_type = 1 ;
-      join_test_type < join_test_types ;
-      join_test_type++) {
-
-    std::cout << "JOIN TEST ------------------------ :: " << std::to_string(join_test_type) << "\n";
+  for (oid_t join_test_type = 0; join_test_type < join_test_types;
+       join_test_type++) {
+    std::cout << "JOIN TEST ------------------------ :: "
+              << std::to_string(join_test_type) << "\n";
 
     // Go over all join algorithms
     for (auto join_algorithm : join_algorithms) {
-      std::cout << "JOIN ALGORITHM :: " << PlanNodeTypeToString(join_algorithm) << "\n";
+      std::cout << "JOIN ALGORITHM :: " << PlanNodeTypeToString(join_algorithm)
+                << "\n";
 
       // Go over all join types
       for (auto join_type : join_types) {
@@ -102,9 +97,7 @@ TEST(JoinTests, JoinPredicateTest) {
         ExecuteJoinTest(join_algorithm, join_type, join_test_type);
       }
     }
-
   }
-
 }
 
 /**
@@ -117,55 +110,56 @@ void ExpectZeroResultTiles(MockExecutor *table_scan_executor) {
 /**
  * @ brief Expect exactly two result tiles from child, getting all of them
  */
-void ExpectTwoResultTiles(
-    const std::unique_ptr<storage::DataTable>& table,
-    MockExecutor *table_scan_executor) {
+void ExpectTwoResultTiles(const std::unique_ptr<storage::DataTable> &table,
+                          MockExecutor *table_scan_executor) {
   std::unique_ptr<executor::LogicalTile> table_logical_tile1(
-      executor::LogicalTileFactory::WrapTileGroup(
-          table->GetTileGroup(0)));
+      executor::LogicalTileFactory::WrapTileGroup(table->GetTileGroup(0)));
   std::unique_ptr<executor::LogicalTile> table_logical_tile2(
-      executor::LogicalTileFactory::WrapTileGroup(
-          table->GetTileGroup(1)));
-  EXPECT_CALL(*table_scan_executor, DExecute()).WillOnce(Return(true)).WillOnce(
-      Return(true)).WillOnce(Return(false));
-  EXPECT_CALL(*table_scan_executor, GetOutput()).WillOnce(
-      Return(table_logical_tile1.release())).WillOnce(
-      Return(table_logical_tile2.release()));
+      executor::LogicalTileFactory::WrapTileGroup(table->GetTileGroup(1)));
+  EXPECT_CALL(*table_scan_executor, DExecute())
+      .WillOnce(Return(true))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*table_scan_executor, GetOutput())
+      .WillOnce(Return(table_logical_tile1.release()))
+      .WillOnce(Return(table_logical_tile2.release()));
 }
 
 /**
- * @ brief Expect more than one result tiles from right child, but only get one of them
+ * @ brief Expect more than one result tiles from right child, but only get one
+ * of them
  */
 void ExpectMoreThanOneResultTiles(
-      const std::unique_ptr<storage::DataTable>& table,
+    const std::unique_ptr<storage::DataTable> &table,
     MockExecutor *table_scan_executor) {
   std::unique_ptr<executor::LogicalTile> right_table_logical_tile1(
-      executor::LogicalTileFactory::WrapTileGroup(
-          table->GetTileGroup(0)));
+      executor::LogicalTileFactory::WrapTileGroup(table->GetTileGroup(0)));
 
   EXPECT_CALL(*table_scan_executor, DExecute()).WillOnce(Return(true));
-  EXPECT_CALL(*table_scan_executor, GetOutput()).WillOnce(
-      Return(right_table_logical_tile1.release()));
+  EXPECT_CALL(*table_scan_executor, GetOutput())
+      .WillOnce(Return(right_table_logical_tile1.release()));
 }
 
 /**
  * @ brief Expect exactly three result tiles from child, getting all of them
  */
-void ExpectThreeResultTiles(
-    const std::unique_ptr<storage::DataTable>& table,
-    MockExecutor *table_scan_executor) {
+void ExpectThreeResultTiles(const std::unique_ptr<storage::DataTable> &table,
+                            MockExecutor *table_scan_executor) {
   std::unique_ptr<executor::LogicalTile> table_logical_tile1(
       executor::LogicalTileFactory::WrapTileGroup(table->GetTileGroup(0)));
   std::unique_ptr<executor::LogicalTile> table_logical_tile2(
       executor::LogicalTileFactory::WrapTileGroup(table->GetTileGroup(1)));
   std::unique_ptr<executor::LogicalTile> table_logical_tile3(
       executor::LogicalTileFactory::WrapTileGroup(table->GetTileGroup(2)));
-  EXPECT_CALL(*table_scan_executor, DExecute()).WillOnce(Return(true)).WillOnce(
-      Return(true)).WillOnce(Return(true)).WillOnce(Return(false));
-  EXPECT_CALL(*table_scan_executor, GetOutput()).WillOnce(
-      Return(table_logical_tile1.release())).WillOnce(
-      Return(table_logical_tile2.release())).WillOnce(
-      Return(table_logical_tile3.release()));
+  EXPECT_CALL(*table_scan_executor, DExecute())
+      .WillOnce(Return(true))
+      .WillOnce(Return(true))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*table_scan_executor, GetOutput())
+      .WillOnce(Return(table_logical_tile1.release()))
+      .WillOnce(Return(table_logical_tile2.release()))
+      .WillOnce(Return(table_logical_tile3.release()));
 }
 
 /*
@@ -183,7 +177,8 @@ void ExpectThreeResultTiles(
  * ...    ....   .....     ....
  * 90     91     ....      ....
  */
-void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid_t join_test_type) {
+void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type,
+                     oid_t join_test_type) {
   //===--------------------------------------------------------------------===//
   // Mock table scan executors
   //===--------------------------------------------------------------------===//
@@ -209,7 +204,8 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
       left_table_tile_group_count = 3;
       right_table_tile_group_count = 0;
     } break;
-    default: break;
+    default:
+      break;
   }
 
   std::unique_ptr<storage::DataTable> left_table(
@@ -224,10 +220,9 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
       right_table.get(), tile_group_size * right_table_tile_group_count, false,
       false, false);
 
-  //std::cout << (*left_table);
+  // std::cout << (*left_table);
 
-  //std::cout << (*right_table);
-
+  // std::cout << (*right_table);
 
   // Left scan executor returns logical tiles from the left table
 
@@ -238,21 +233,20 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
   //===--------------------------------------------------------------------===//
 
   switch (join_test_type) {
-  case BASIC_TEST:   {
-    ExpectThreeResultTiles(left_table, &left_table_scan_executor);
-  } break;
-  case EMPTY_LEFT_TABLE_TEST: {
-    ExpectZeroResultTiles(&left_table_scan_executor);
-  } break;
-  case EMPTY_RIGHT_TABLE_TEST: {
-    if (join_type == JOIN_TYPE_INNER || join_type == JOIN_TYPE_RIGHT) {
-      // do nothing. left child never invoked
-    } else {
+    case BASIC_TEST: {
       ExpectThreeResultTiles(left_table, &left_table_scan_executor);
-    }
-  } break;
+    } break;
+    case EMPTY_LEFT_TABLE_TEST: {
+      ExpectZeroResultTiles(&left_table_scan_executor);
+    } break;
+    case EMPTY_RIGHT_TABLE_TEST: {
+      if (join_type == JOIN_TYPE_INNER || join_type == JOIN_TYPE_RIGHT) {
+        // do nothing. left child executor is never invoked
+      } else {
+        ExpectThreeResultTiles(left_table, &left_table_scan_executor);
+      }
+    } break;
   }
-
   // Right scan executor returns logical tiles from the right table
 
   EXPECT_CALL(right_table_scan_executor, DInit()).WillOnce(Return(true));
@@ -263,7 +257,7 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
 
   switch (join_test_type) {
     case BASIC_TEST: {
-          ExpectTwoResultTiles(right_table, &right_table_scan_executor);
+      ExpectTwoResultTiles(right_table, &right_table_scan_executor);
     } break;
     case EMPTY_LEFT_TABLE_TEST: {
       if (join_type == JOIN_TYPE_INNER || join_type == JOIN_TYPE_LEFT) {
@@ -285,11 +279,11 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
   oid_t tuples_with_null = 0;
   auto projection = JoinTestsUtil::CreateProjection();
   // setup the projection schema
-  catalog::Schema* schema = new catalog::Schema({
-    ExecutorTestsUtil::GetColumnInfo(1),
-    ExecutorTestsUtil::GetColumnInfo(1),
-    ExecutorTestsUtil::GetColumnInfo(0),
-    ExecutorTestsUtil::GetColumnInfo(0)});;
+  catalog::Schema *schema = new catalog::Schema(
+      {ExecutorTestsUtil::GetColumnInfo(1), ExecutorTestsUtil::GetColumnInfo(1),
+       ExecutorTestsUtil::GetColumnInfo(0),
+       ExecutorTestsUtil::GetColumnInfo(0)});
+  ;
 
   // Construct predicate
   expression::AbstractExpression *predicate =
@@ -320,7 +314,7 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
           result_tuple_count += result_logical_tile->GetTupleCount();
           tuples_with_null +=
               CountTuplesWithNullFields(result_logical_tile.get());
-          //std::cout << (*result_logical_tile);
+          // std::cout << (*result_logical_tile);
         }
       }
 
@@ -414,8 +408,7 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
   // Execute test
   //===--------------------------------------------------------------------===//
 
-  if(join_test_type == BASIC_TEST) {
-
+  if (join_test_type == BASIC_TEST) {
     // Check output
     switch (join_type) {
       case JOIN_TYPE_INNER:
@@ -444,7 +437,6 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
     }
 
   } else if (join_test_type == EMPTY_LEFT_TABLE_TEST) {
-
     // Check output
     switch (join_type) {
       case JOIN_TYPE_INNER:
@@ -463,8 +455,8 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
         break;
 
       case JOIN_TYPE_OUTER:
-        EXPECT_EQ(result_tuple_count, 15);
-        EXPECT_EQ(tuples_with_null, 15);
+        EXPECT_EQ(result_tuple_count, 10);
+        EXPECT_EQ(tuples_with_null, 10);
         break;
 
       default:
@@ -473,7 +465,6 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
     }
 
   } else if (join_test_type == EMPTY_RIGHT_TABLE_TEST) {
-
     // Check output
     switch (join_type) {
       case JOIN_TYPE_INNER:
@@ -501,7 +492,6 @@ void ExecuteJoinTest(PlanNodeType join_algorithm, PelotonJoinType join_type, oid
         break;
     }
   }
-
 }
 
 oid_t CountTuplesWithNullFields(executor::LogicalTile *logical_tile) {

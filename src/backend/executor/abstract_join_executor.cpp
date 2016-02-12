@@ -56,9 +56,6 @@ bool AbstractJoinExecutor::DInit() {
   return true;
 }
 
-/**
- * @ brief Build the schema of the joined tile based on the projection info
- */
 std::vector<LogicalTile::ColumnInfo> AbstractJoinExecutor::BuildSchema(
     std::vector<LogicalTile::ColumnInfo> &left,
     std::vector<LogicalTile::ColumnInfo> &right) {
@@ -143,8 +140,6 @@ AbstractJoinExecutor::BuildSchemaFromRightTile(
     const std::vector<LogicalTile::ColumnInfo> *right_schema,
     const catalog::Schema *output_schema) {
   assert(right_schema != nullptr);
-  auto total_size = output_schema->GetColumnCount();
-
   // dummy physical tile for the empty child tile
   std::shared_ptr<storage::Tile> ptile(storage::TileFactory::GetTile(
       BACKEND_TYPE_MM, INVALID_OID, INVALID_OID, INVALID_OID, INVALID_OID,
