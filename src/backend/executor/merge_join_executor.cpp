@@ -206,12 +206,15 @@ bool MergeJoinExecutor::DExecute() {
       }
     }
 
-    // Then, advance both
-    left_start_row = left_end_row;
-    left_end_row = Advance(left_tile, left_start_row, true);
-
+    // Then, advance both if necessary
     right_start_row = right_end_row;
     right_end_row = Advance(right_tile, right_start_row, false);
+
+    // We should not advance left if right tile reaches the last row
+    if (right_start_row != right_end_row) {
+      left_start_row = left_end_row;
+      left_end_row = Advance(left_tile, left_start_row, true);
+    }
   }
 
   // Check if we have any join tuples.

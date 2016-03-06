@@ -64,9 +64,8 @@ peloton::catalog::Schema *CreateJoinSchema() {
                               ExecutorTestsUtil::GetColumnInfo(0)});
 }
 
-std::vector<PlanNodeType> join_algorithms = {PLAN_NODE_TYPE_NESTLOOP,
-                                             // PLAN_NODE_TYPE_MERGEJOIN,
-                                             PLAN_NODE_TYPE_HASHJOIN};
+std::vector<PlanNodeType> join_algorithms = {
+    PLAN_NODE_TYPE_NESTLOOP, PLAN_NODE_TYPE_MERGEJOIN, PLAN_NODE_TYPE_HASHJOIN};
 
 std::vector<PelotonJoinType> join_types = {JOIN_TYPE_INNER, JOIN_TYPE_LEFT,
                                            JOIN_TYPE_RIGHT, JOIN_TYPE_OUTER};
@@ -136,6 +135,10 @@ TEST(JoinTests, ComplicatedTest) {
 
 TEST(JoinTests, SpeedTest) {
   ExecuteJoinTest(PLAN_NODE_TYPE_HASHJOIN, JOIN_TYPE_OUTER, SPEED_TEST);
+
+  ExecuteJoinTest(PLAN_NODE_TYPE_MERGEJOIN, JOIN_TYPE_OUTER, SPEED_TEST);
+
+  ExecuteJoinTest(PLAN_NODE_TYPE_NESTLOOP, JOIN_TYPE_OUTER, SPEED_TEST);
 }
 
 TEST(JoinTests, LeftTableEmptyTest) {
